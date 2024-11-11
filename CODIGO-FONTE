@@ -5,24 +5,20 @@
 
 #define FILENAME "user.txt"
 
-// ---- prototipagem ----
 void menu();
 void cadastro();
 void alterarsenha();
 void listar();
 void excluir_usuario();
-int buscar_usuario(const char *nome_usuario);
 void criptografar(char *texto);
 void descriptografar(char *texto);
 
-// ---- menu -----
 int main() {
     setlocale(LC_ALL, "portuguese");
     menu();
     return 0;
 }
 
-// --- procedimentos ----
 void menu() {
     int op;
     printf("\n------------- MENU -------------- \n");
@@ -58,21 +54,17 @@ void menu() {
 void cadastro() {
     char nome[15], senha[15], confirm[15];
     FILE *file = fopen(FILENAME, "a");
-
     if (file == NULL) {
         printf(" Erro ao abrir o arquivo.\n");
+        menu();
         return;
     }
-
     printf("\n---------------------------------\n");
     printf("\n CADASTRAR USUÁRIO \n");
-
     printf("\n Informe o nome de usuário: ");
     scanf("%s", nome);
-
     printf("\n Informe a senha: ");
     scanf("%s", senha);
-
     do {
         printf("\n Confirme a senha: ");
         scanf("%s", confirm);
@@ -80,81 +72,56 @@ void cadastro() {
             printf("\n As senhas não coincidem. Tente novamente.\n");
         }
     } while (strcmp(senha, confirm) != 0);
-
     criptografar(nome);  
     criptografar(senha); 
-
     fprintf(file, "%s\n%s\n", nome, senha);
     fclose(file);
-    printf("\n Usuário cadastrado com sucesso.\n");
+   	printf("\n Usuário cadastrado com sucesso.\n");
     menu();
 }
 
 void alterarsenha() {
-    char nome[15], nome_criptografado[15], senha_atual[15], senha_criptografada[15], nova_senha[15];
+    char nome[15], senha_criptografada[15], nova_senha[15], linha[15];
     int encontrado = 0;
-
-    printf("\n---------------------------------\n");
-    printf("\n ALTERAR SENHA DO USUÁRIO\n");
-
-    printf("\n Informe o nome do usuário para alterar a senha: ");
-    scanf("%s", nome);
-    printf("\n Informe a senha atual: ");
-    scanf("%s", senha_atual);
-
     FILE *file = fopen(FILENAME, "r");
-    FILE *temp = fopen("temp.txt", "w");
-
-    if (file == NULL || temp == NULL) {
-        printf("\n Erro ao abrir o arquivo.\n");
+    FILE *tempFile = fopen("temp.txt", "w");
+    if (file == NULL || tempFile == NULL) {
+        printf("Erro ao abrir o arquivo.\n");
         return;
     }
-
-    criptografar(senha_atual);  
-
-    char linha[15];
+    printf("Nome do usuário para alterar a senha: ");
+    scanf("%s", nome);
+    criptografar(nome);
     while (fgets(linha, sizeof(linha), file) != NULL) {
-        linha[strcspn(linha, "\n")] = 0;  
-        strcpy(nome_criptografado, linha); 
-
-        descriptografar(linha);  
-        if (strcmp(linha, nome) == 0) {  
-            fgets(senha_criptografada, sizeof(senha_criptografada), file);
-            senha_criptografada[strcspn(senha_criptografada, "\n")] = 0;
-
-            if (strcmp(senha_criptografada, senha_atual) == 0) { 
-                printf("\n Informe a nova senha: ");
-                scanf("%s", nova_senha);
-                criptografar(nova_senha);  
-                fprintf(temp, "%s\n%s\n", nome_criptografado, nova_senha);
-                encontrado = 1;
-            } else {
-                printf("\n Senha incorreta.\n");
-                fclose(file);
-                fclose(temp);
-                remove("temp.txt");
-                menu();
-                return;
-            }
+        linha[strcspn(linha, "\n")] = 0;
+        if (strcmp(linha, nome) == 0) {
+            encontrado = 1
+            fprintf(tempFile, "%s\n", linha);
+            printf("Nova senha: ");
+            scanf("%s", nova_senha);
+            criptografar(nova_senha);
+            fprintf(tempFile, "%s\n", nova_senha);
+            fgets(linha, sizeof(linha), file);
         } else {
-            fprintf(temp, "%s\n", nome_criptografado);
-            fgets(linha, sizeof(linha), file);  
-            fprintf(temp, "%s", linha);
+        
+            fprintf(tempFile, "%s\n", linha);
+            fgets(linha, sizeof(linha), file); 
+            fprintf(tempFile, "%s", linha);
         }
     }
 
     fclose(file);
-    fclose(temp);
+    fclose(tempFile);
 
     if (encontrado) {
         remove(FILENAME);
         rename("temp.txt", FILENAME);
-        printf("\n Senha alterada com sucesso.\n");
+        printf("Senha alterada com sucesso!\n");
     } else {
-        printf("\n Usuário não encontrado.\n");
         remove("temp.txt");
+        printf("Usuário não encontrado.\n");
     }
-    menu();
+    menu()
 }
 
 void listar() {
@@ -171,12 +138,12 @@ void listar() {
     
     int linha = 1;
     while (fgets(line, sizeof(line), file) != NULL) {
-        line[strcspn(line, "\n")] = 0;  
+        line[strcspn(line, "\n")] = 0; 
 
         descriptografar(line);  
 
         if (linha % 2 != 0) { 
-            printf(" Usuário: %s\n", line);  
+            printf(" Usuário: %s\n", line);
         }
         linha++;
     }
@@ -198,22 +165,17 @@ void excluir_usuario() {
     printf("Informe o nome do usuário que deseja excluir: ");
     scanf("%s", nome);
 
-   
     criptografar(nome);
 
     while (fgets(linha, sizeof(linha), file) != NULL) {
         linha[strcspn(linha, "\n")] = 0; 
-
-        
         if (strcmp(linha, nome) == 0) {
-            
             fgets(linha, sizeof(linha), file);
             encontrado = 1;
         } else {
-            
-            fprintf(tempFile, "%s\n", linha);  
-            fgets(linha, sizeof(linha), file); 
-            fprintf(tempFile, "%s", linha);    
+            fprintf(tempFile, "%s\n", linha); 
+            fgets(linha, sizeof(linha), file);
+            fprintf(tempFile, "%s", linha);  
         }
     }
 
@@ -230,8 +192,6 @@ void excluir_usuario() {
     }
     menu();
 }
-
-
 
 void criptografar(char *texto) {
 	int i;
@@ -277,7 +237,6 @@ void criptografar(char *texto) {
         }
     }
 }
-
 
 void descriptografar(char *texto) {
 	int i;
