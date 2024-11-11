@@ -1,0 +1,325 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <locale.h>
+
+#define FILENAME "user.txt"
+
+// ---- prototipagem ----
+void menu();
+void cadastro();
+void alterarsenha();
+void listar();
+void excluir_usuario();
+int buscar_usuario(const char *nome_usuario);
+void criptografar(char *texto);
+void descriptografar(char *texto);
+
+// ---- menu -----
+int main() {
+    setlocale(LC_ALL, "portuguese");
+    menu();
+    return 0;
+}
+
+// --- procedimentos ----
+void menu() {
+    int op;
+    printf("\n------------- MENU -------------- \n");
+    printf("\n 1 - Cadastrar usuário. \n");
+    printf(" 2 - Alterar senha do usuário. \n");
+    printf(" 3 - Mostrar usuários. \n");
+    printf(" 4 - Excluir usuário.\n");
+    printf(" 5 - Sair.\n");
+    printf("\n ESCOLHA UMA OPCAO: ");
+    scanf("%d", &op);
+    switch(op) {
+        case 1: 
+            cadastro();
+            break;
+        case 2: 
+            alterarsenha();
+            break;
+        case 3: 
+            listar();
+            break;
+        case 4: 
+            excluir_usuario();
+            break;
+        case 5: 
+            printf("\n Saindo...\n");
+            exit(0);
+        default: 
+            printf("\n Opção inválida.\n");
+            menu();
+    }
+}
+
+void cadastro() {
+    char nome[15], senha[15], confirm[15];
+    FILE *file = fopen(FILENAME, "a");
+
+    if (file == NULL) {
+        printf(" Erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("\n---------------------------------\n");
+    printf("\n CADASTRAR USUÁRIO \n");
+
+    printf("\n Informe o nome de usuário: ");
+    scanf("%s", nome);
+
+    printf("\n Informe a senha: ");
+    scanf("%s", senha);
+
+    do {
+        printf("\n Confirme a senha: ");
+        scanf("%s", confirm);
+        if (strcmp(senha, confirm) != 0) {
+            printf("\n As senhas não coincidem. Tente novamente.\n");
+        }
+    } while (strcmp(senha, confirm) != 0);
+
+    criptografar(nome);  
+    criptografar(senha); 
+
+    fprintf(file, "%s\n%s\n", nome, senha);
+    fclose(file);
+    printf("\n Usuário cadastrado com sucesso.\n");
+    menu();
+}
+
+void alterarsenha() {
+    char nome[15], nome_criptografado[15], senha_atual[15], senha_criptografada[15], nova_senha[15];
+    int encontrado = 0;
+
+    printf("\n---------------------------------\n");
+    printf("\n ALTERAR SENHA DO USUÁRIO\n");
+
+    printf("\n Informe o nome do usuário para alterar a senha: ");
+    scanf("%s", nome);
+    printf("\n Informe a senha atual: ");
+    scanf("%s", senha_atual);
+
+    FILE *file = fopen(FILENAME, "r");
+    FILE *temp = fopen("temp.txt", "w");
+
+    if (file == NULL || temp == NULL) {
+        printf("\n Erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    criptografar(senha_atual);  
+
+    char linha[15];
+    while (fgets(linha, sizeof(linha), file) != NULL) {
+        linha[strcspn(linha, "\n")] = 0;  
+        strcpy(nome_criptografado, linha); 
+
+        descriptografar(linha);  
+        if (strcmp(linha, nome) == 0) {  
+            fgets(senha_criptografada, sizeof(senha_criptografada), file);
+            senha_criptografada[strcspn(senha_criptografada, "\n")] = 0;
+
+            if (strcmp(senha_criptografada, senha_atual) == 0) { 
+                printf("\n Informe a nova senha: ");
+                scanf("%s", nova_senha);
+                criptografar(nova_senha);  
+                fprintf(temp, "%s\n%s\n", nome_criptografado, nova_senha);
+                encontrado = 1;
+            } else {
+                printf("\n Senha incorreta.\n");
+                fclose(file);
+                fclose(temp);
+                remove("temp.txt");
+                menu();
+                return;
+            }
+        } else {
+            fprintf(temp, "%s\n", nome_criptografado);
+            fgets(linha, sizeof(linha), file);  
+            fprintf(temp, "%s", linha);
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+
+    if (encontrado) {
+        remove(FILENAME);
+        rename("temp.txt", FILENAME);
+        printf("\n Senha alterada com sucesso.\n");
+    } else {
+        printf("\n Usuário não encontrado.\n");
+        remove("temp.txt");
+    }
+    menu();
+}
+
+void listar() {
+    char line[15];
+    FILE *file = fopen(FILENAME, "r");
+
+    if (file == NULL) {
+        printf(" Erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("\n---------------------------------\n");
+    printf("\n USUÁRIOS CADASTRADOS \n\n");
+    
+    int linha = 1;
+    while (fgets(line, sizeof(line), file) != NULL) {
+        line[strcspn(line, "\n")] = 0;  
+
+        descriptografar(line);  
+
+        if (linha % 2 != 0) { 
+            printf(" Usuário: %s\n", line);  
+        }
+        linha++;
+    }
+    menu();
+}
+
+void excluir_usuario() {
+    char nome[15], nome_criptografado[15], linha[15];
+    int encontrado = 0;
+
+    FILE *file = fopen(FILENAME, "r");
+    FILE *tempFile = fopen("temp.txt", "w");
+
+    if (file == NULL || tempFile == NULL) {
+        printf("Erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("Informe o nome do usuário que deseja excluir: ");
+    scanf("%s", nome);
+
+   
+    criptografar(nome);
+
+    while (fgets(linha, sizeof(linha), file) != NULL) {
+        linha[strcspn(linha, "\n")] = 0; 
+
+        
+        if (strcmp(linha, nome) == 0) {
+            
+            fgets(linha, sizeof(linha), file);
+            encontrado = 1;
+        } else {
+            
+            fprintf(tempFile, "%s\n", linha);  
+            fgets(linha, sizeof(linha), file); 
+            fprintf(tempFile, "%s", linha);    
+        }
+    }
+
+    fclose(file);
+    fclose(tempFile);
+
+   if (encontrado) {
+        remove(FILENAME);
+        rename("temp.txt", FILENAME);
+        printf("Usuario excluído com sucesso!\n");
+    } else {
+        remove("temp.txt");
+        printf("Usuario não encontrado.\n");
+    }
+    menu();
+}
+
+
+
+void criptografar(char *texto) {
+	int i;
+    for (i = 0; i < strlen(texto); i++) {
+        switch (texto[i]) {
+            case 'a': texto[i] = '!'; break;
+            case 'b': texto[i] = '@'; break;
+            case 'c': texto[i] = '#'; break;
+            case 'd': texto[i] = '$'; break;
+            case 'e': texto[i] = '%'; break;
+            case 'f': texto[i] = '¨'; break;
+            case 'g': texto[i] = '&'; break;
+            case 'h': texto[i] = '*'; break;
+            case 'i': texto[i] = '('; break;
+            case 'j': texto[i] = ')'; break;
+            case 'k': texto[i] = '='; break;
+            case 'l': texto[i] = '+'; break;
+            case 'm': texto[i] = '-'; break;
+            case 'n': texto[i] = '_'; break;
+            case 'o': texto[i] = '§'; break;
+            case 'p': texto[i] = '´'; break;
+            case 'q': texto[i] = '`'; break;
+            case 'r': texto[i] = '['; break;
+            case 's': texto[i] = ']'; break;
+            case 't': texto[i] = '{'; break;
+            case 'u': texto[i] = '}'; break;
+            case 'v': texto[i] = '~'; break;
+            case 'w': texto[i] = '^'; break;
+            case 'x': texto[i] = ';'; break;
+            case 'y': texto[i] = ':'; break;
+            case 'z': texto[i] = '>'; break;
+            case '1': texto[i] = '.'; break;
+            case '2': texto[i] = ','; break;
+            case '3': texto[i] = '<'; break;
+            case '4': texto[i] = '¹'; break;
+            case '5': texto[i] = '|'; break;
+            case '6': texto[i] = '?'; break;
+            case '7': texto[i] = '/'; break;
+            case '8': texto[i] = '°'; break;
+            case '9': texto[i] = '£'; break;
+            case '0': texto[i] = '¢'; break;
+            default: break;
+        }
+    }
+}
+
+
+void descriptografar(char *texto) {
+	int i;
+    for (i = 0; i < strlen(texto); i++) {
+        switch (texto[i]) {
+            case '!': texto[i] = 'a'; break;
+            case '@': texto[i] = 'b'; break;
+            case '#': texto[i] = 'c'; break;
+            case '$': texto[i] = 'd'; break;
+            case '%': texto[i] = 'e'; break;
+            case '¨': texto[i] = 'f'; break;
+            case '&': texto[i] = 'g'; break;
+            case '*': texto[i] = 'h'; break;
+            case '(': texto[i] = 'i'; break;
+            case ')': texto[i] = 'j'; break;
+            case '=': texto[i] = 'k'; break;
+            case '+': texto[i] = 'l'; break;
+            case '-': texto[i] = 'm'; break;
+            case '_': texto[i] = 'n'; break;
+            case '§': texto[i] = 'o'; break;
+            case '´': texto[i] = 'p'; break;
+            case '`': texto[i] = 'q'; break;
+            case '[': texto[i] = 'r'; break;
+            case ']': texto[i] = 's'; break;
+            case '{': texto[i] = 't'; break;
+            case '}': texto[i] = 'u'; break;
+            case '~': texto[i] = 'v'; break;
+            case '^': texto[i] = 'w'; break;
+            case ';': texto[i] = 'x'; break;
+            case ':': texto[i] = 'y'; break;
+            case '>': texto[i] = 'z'; break;
+            case '.': texto[i] = '1'; break;
+            case ',': texto[i] = '2'; break;
+            case '<': texto[i] = '3'; break;
+            case '¹': texto[i] = '4'; break;
+            case '|': texto[i] = '5'; break;
+            case '?': texto[i] = '6'; break;
+            case '/': texto[i] = '7'; break;
+            case '°': texto[i] = '8'; break;
+            case '£': texto[i] = '9'; break;
+            case '¢': texto[i] = '0'; break;
+            default: break;
+        }
+    }
+}
